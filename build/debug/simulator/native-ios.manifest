@@ -1,0 +1,15 @@
+CACHE MANIFEST
+
+#3ab208e05c264ef18106314f3c988278 version debug
+
+CACHE:
+resources/images/bkgd_table.png
+resources/images/main.png
+spritesheets/spritesheetSizeMap.json
+index.html
+native-ios.js
+
+FALLBACK:
+
+NETWORK:
+*
