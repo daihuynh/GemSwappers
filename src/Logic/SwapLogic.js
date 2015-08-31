@@ -13,10 +13,11 @@ var SwapLogic = function (items, rows, columns) {
 	//		[{x, y},...] matched in line
 	//	]
 	this.findMatched = function () {
-		var x = 0, y = 0;
 		var currentItem;
 		var matched = [];
 		var matchedCount = 0;
+		
+		var x = 0, y = 0;
 		
 		// Horizontal check
 		while (y < this._rows) {
@@ -46,6 +47,9 @@ var SwapLogic = function (items, rows, columns) {
 			y++;
 		}
 		
+		x = 0;
+		y = 0;
+		// Vertical check
 		while (x < this._columns) {
 			while (y < this._rows) {
 				currentItem = this._items[y * this._columns + x];

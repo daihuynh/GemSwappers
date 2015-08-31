@@ -3,6 +3,7 @@ CACHE MANIFEST
 #3ab208e05c264ef18106314f3c988278 version debug
 
 CACHE:
+resources/images/bkgd_table_overlay.png
 resources/images/bkgd_table.png
 resources/images/button_pause_pressed.png
 resources/images/button_pause.png
@@ -39,6 +40,25 @@ resources/images/numbers/timer_6.png
 resources/images/numbers/timer_7.png
 resources/images/numbers/timer_8.png
 resources/images/numbers/timer_9.png
+resources/sounds/effect/bomb_sound1.mp3
+resources/sounds/effect/combo_sound1.mp3
+resources/sounds/effect/combo_sound10.mp3
+resources/sounds/effect/combo_sound11.mp3
+resources/sounds/effect/combo_sound12.mp3
+resources/sounds/effect/combo_sound2.mp3
+resources/sounds/effect/combo_sound3.mp3
+resources/sounds/effect/combo_sound4.mp3
+resources/sounds/effect/combo_sound5.mp3
+resources/sounds/effect/combo_sound6.mp3
+resources/sounds/effect/combo_sound7.mp3
+resources/sounds/effect/combo_sound8.mp3
+resources/sounds/effect/combo_sound9.mp3
+resources/sounds/effect/count.mp3
+resources/sounds/effect/fairy_bomb.mp3
+resources/sounds/effect/go.mp3
+resources/sounds/effect/swap_fail.mp3
+resources/sounds/effect/swap_ok.mp3
+resources/sounds/music/bg.mp3
 spritesheets/spritesheetSizeMap.json
 index.html
 native-ios.js

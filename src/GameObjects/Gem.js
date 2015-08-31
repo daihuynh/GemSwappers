@@ -4,6 +4,7 @@ import ui.resource.Image as Image;
 import src.SpriteInfo as SpriteInfo;
 import src.AnimateImages as AnimateImages;
 import src.Configs.GameConfig as GameConfig;
+import animate;
 
 var AnimateImage = AnimateImages.AnimateImage;
 var KeyFrameImage = AnimateImages.KeyFrameImage;
@@ -42,8 +43,9 @@ var Gem = Class(ImageView, function(supr) {
 			superview : this,
 			fps: 6,
 			isResetSize: true,
-			x : GameConfig["gem_size"] / 10,
-			y : GameConfig["gem_size"] / 10,
+			makeCenter: true,
+			x : GameConfig["gem_size"] / 2,
+			y : GameConfig["gem_size"] / 2,
 			images: [
 				SpriteInfo.findImageByName("mainSpriteInfo", "block_03_pop_0001.png"),
 				SpriteInfo.findImageByName("mainSpriteInfo", "block_03_pop_0002.png"),
@@ -94,6 +96,10 @@ var Gem = Class(ImageView, function(supr) {
 			that._explosion.hide();
 			that.hide();
 		});
+		
+		animate(this).now({
+			opacity: 0
+		}, 1000);
 		
 		this.stopShine();
 		this._explosion.play(false);

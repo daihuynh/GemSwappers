@@ -11,6 +11,7 @@ import src.AnimateImages as AnimateImages;
 import src.Logic.SwapLogic as SwapLogic;
 import src.GameObjects.Gem as Gem;
 import src.Configs.GameConfig as GameConfig;
+import AudioManager;
 import event.input.drag as drag;
 
 
@@ -40,9 +41,52 @@ var START_X = 17;
 var START_Y = 313;
 var SPACING = 3;
 var ROUND_TIME = 10 * 1000;
+var MAX_POWER = 30;
+var SUGGESTION_TIME = 3000; // seconds
 
 exports = Class(GC.Application, function () {
 
+	this._isStartGame = false;
+	this._suggestionEllapsedTime = 0;
+	this._isShowSuggestion = false;
+	this._isBombExplode = false;
+
+	this._sound = new AudioManager({
+		path: "resources/sounds/music/",
+		files: {
+			bg: {
+				volume: 1.0,
+				loop: true,
+				background: true
+			}
+		}
+	});
+	this._sound.play("bg", {loop: true});
+	
+	this._sfx = new AudioManager({
+		path: "resources/sounds/effect/",
+		files: {
+			swap_fail: {},
+			swap_ok: {},
+			count:{},
+			go: {},
+			bomb_sound1:{},
+			combo_sound1:{},
+			combo_sound2:{},
+			combo_sound3:{},
+			combo_sound4:{},
+			combo_sound5:{},
+			combo_sound6:{},
+			combo_sound7:{},
+			combo_sound8:{},
+			combo_sound9:{},
+			combo_sound10:{},
+			combo_sound11:{},
+			combo_sound12:{}
+		}
+	});
+		
+	
 	this.initUI = function () {
 		this.view.style.scale = scale;
 		
@@ -61,8 +105,16 @@ exports = Class(GC.Application, function () {
 			image : "resources/images/bkgd_table.png"
 		});
 		
+		this.imgBgOverlayView = new ImageView({
+			superview: this.view,
+			width: boundsWidth,
+			height: boundsHeight,
+			zIndex: 10000,
+			canHandleEvents : false,
+			image : "resources/images/bkgd_table_overlay.png"
+		});
 		
-		this.imgScoreBoard = SpriteInfo.getImageViewByName(this.imgBgView, "mainSpriteInfo", "header_score_small.png");
+		this.imgScoreBoard = SpriteInfo.getImageViewByName(this.imgBgOverlayView, "mainSpriteInfo", "header_score_small.png");
 		this.imgScoreBoard.updateOpts({
 			x: boundsWidth / 2 - this.imgScoreBoard.getImage().getSourceW() / 2,
 			y: boundsHeight - 160,
@@ -70,36 +122,13 @@ exports = Class(GC.Application, function () {
 		
 		//this.initScoreView();
 		
-		this.timerAnimateImage = new AnimateImage({
-			superview : this.imgBgView,
-			x: 200,
-			y: 0,
-			isResetSize : true,
-			fps : (1000 / ROUND_TIME) * 14,
-			images:  [
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0001.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0002.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0003.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0004.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0005.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0006.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0007.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0008.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0009.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0010.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0011.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0012.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0013.png"),
-						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0014.png")
-					]
-		});
-		
-		this.timerAnimateImage.play(false);
-		this.timerAnimateImage.on("complete", function() {
-			console.log("Timeout dude!");
-		});
-		
 		this.initButtons();
+		
+		this.initFairy();
+		
+		this.initObjectives();
+		
+		this.initToolBar();
 		
 		this.shuffleData();
 		
@@ -107,9 +136,22 @@ exports = Class(GC.Application, function () {
 		
 		this.init_gems();
 		
-		this.suggest();
-		
 		this.sync_gems();
+		
+		
+		this.initCountDown();
+		
+		var that = this;
+		this._sfx.play("count");
+		setTimeout(function() {
+			that._sfx.play("count");
+		}, 1000);
+		setTimeout(function() {
+			that._sfx.play("count");
+		}, 2000);
+		setTimeout(function() {
+			that._sfx.play("go");
+		}, 3000);
 	};
 	
 	this.initScoreView = function() {
@@ -173,9 +215,11 @@ exports = Class(GC.Application, function () {
 			}
 		}
 		
-		this.fairy = new KeyFrameImage({
-			superview : this.imgBgView,
+		this._fairy = new KeyFrameImage({
+			superview : this.imgBgOverlayView,
 			fps: 12,
+			x: 50,
+			y: 80,
 			keyFrames :
 				{ 
 					"blink" : fairyBlink,
@@ -184,8 +228,8 @@ exports = Class(GC.Application, function () {
 					"power_end" : fairyPowerEnd
 				}
 		});
-		this.fairy.play("blink", true);
-		var that = this;
+		this._fairy.play("idle", true);
+		/*var that = this;
 		setTimeout(function() {
 			that.fairy.play("idle", true);
 		}, 5000);
@@ -195,7 +239,174 @@ exports = Class(GC.Application, function () {
 				that.fairy.on("complete", function(){});
 				that.fairy.play("power_end", true);
 			});
-		}, 5000);
+		}, 5000);*/
+		
+		var powerMeterBG = SpriteInfo.getImageViewByName(this.imgBgOverlayView, "mainSpriteInfo", "powermeter_empty.png");
+		powerMeterBG.updateOpts({
+			x: 20,
+			y: 258
+		});
+		
+		this._powerMeter = SpriteInfo.getImageViewByName(powerMeterBG, "mainSpriteInfo", "powermeter_full.png");
+		this._powerMeter.updateOpts({
+			x: 45,
+			y: 24,
+			width: 0,
+		});
+		
+		var frame = SpriteInfo.getImageViewByName(powerMeterBG, "mainSpriteInfo", "frame_char.png");
+		
+		this._power = 0;
+		
+		this._bomb = SpriteInfo.getImageViewByName(this.imgBgOverlayView, "mainSpriteInfo", "bubble_icon_0001.png");
+		this._bomb.updateOpts({
+			x: 270,
+			y: 100,
+		});
+		this._bomb.hide();
+		
+		this._glow = SpriteInfo.getImageViewByName(this.imgBgOverlayView, "mainSpriteInfo", "gameboard_glow.png");
+		this._glow.updateOpts({
+			x: 0,
+			y: 295
+		});
+		this._glow.hide();
+	}
+	
+	this.fairyThrowBomb = function () {
+		var that = this;
+		
+		this._power = 0;
+		this._isBombExplode = true;
+		
+		this._glow.show();
+		
+		this._fairy.play("power_start", false);
+		this._fairy.once("complete", function () {
+			that._fairy.play("power_end", true);
+			that._bomb.show();
+			animate(that._bomb).now({
+				y : 600
+			}, 2000).then(function () {
+				that._sfx.play("bomb_sound1");
+				
+				that._power = 0;
+				that._powerMeter.updateOpts({
+					width: that._powerMeter.getImage().getSourceW() * that._power / MAX_POWER
+				});
+				
+				that.explode();
+				that._isBombExplode = false;
+				
+				that._fairy.stop();
+				that._fairy.play("idle", true);
+				that._glow.hide();
+				
+				that._bomb.updateOpts({
+					x: 270,
+					y: 100,
+				});
+				that._bomb.hide();
+			});
+		});
+	}
+	
+	this.initObjectives = function () {
+		this._coinAnim = new AnimateImage({
+			superview : this.imgBgOverlayView,
+			fps: 6,
+			x: 60,
+			y: boundsHeight - 75,
+			isResetSize: true,
+			images: [
+				SpriteInfo.findImageByName("mainSpriteInfo", "coin_icon_0001.png"),
+				SpriteInfo.findImageByName("mainSpriteInfo", "coin_icon_0002.png"),
+				SpriteInfo.findImageByName("mainSpriteInfo", "coin_icon_0003.png"),
+				SpriteInfo.findImageByName("mainSpriteInfo", "coin_icon_0004.png"),
+				SpriteInfo.findImageByName("mainSpriteInfo", "coin_icon_0005.png"),
+				SpriteInfo.findImageByName("mainSpriteInfo", "coin_icon_0006.png"),
+				SpriteInfo.findImageByName("mainSpriteInfo", "coin_icon_0007.png"),
+				SpriteInfo.findImageByName("mainSpriteInfo", "coin_icon_0008.png"),
+				SpriteInfo.findImageByName("mainSpriteInfo", "coin_icon_0009.png"),
+				SpriteInfo.findImageByName("mainSpriteInfo", "coin_icon_0010.png")
+			]
+		});
+		this._coinAnim.play(true);
+		
+		this._moveImageView = SpriteInfo.getImageViewByName(this.imgBgOverlayView, "mainSpriteInfo", "move_icon.png");
+		this._moveImageView.updateOpts({
+			x: 220,
+			y: boundsHeight - 65
+		});
+		
+		
+		
+		this._timerAnimateImage = new AnimateImage({
+			superview : this.imgBgOverlayView,
+			x: 400,
+			y: boundsHeight - 70,
+			isResetSize : true,
+			fps : (1000 / ROUND_TIME) * 14,
+			images:  [
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0001.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0002.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0003.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0004.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0005.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0006.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0007.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0008.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0009.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0010.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0011.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0012.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0013.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "time_icon_0014.png")
+					]
+		});
+		
+		this._timerAnimateImage.on("complete", function() {
+			console.log("Timeout dude!");
+		});
+	}
+	
+	this.initCountDown = function () {
+		var countDown = new AnimateImage({
+			superview : this.imgBgOverlayView,
+			canHandleEvents : false,
+			x: boundsWidth / 2,
+			y: 600,
+			isResetSize : true,
+			makeCenter: true,
+			fps : 1,
+			images:  [
+						SpriteInfo.findImageByName("mainSpriteInfo", "1.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "2.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "3.png"),
+						SpriteInfo.findImageByName("mainSpriteInfo", "go.png")
+					]
+		});
+		
+		var that = this;
+		countDown.once("complete", function() {
+			that._isStartGame = true;
+			countDown.hide();
+		});
+		countDown.play(false);
+	}
+	
+	this.initToolBar = function () {
+		var frame = SpriteInfo.getImageViewByName(this.imgBgOverlayView, "mainSpriteInfo", "frame-coins.png");
+		frame.updateOpts({
+			x: boundsWidth - 162,
+			y: 255
+		});
+		
+		var colorBomb = SpriteInfo.getImageViewByName(frame, "mainSpriteInfo", "colorbomb_icon.png");
+		colorBomb.updateOpts({
+			x: 20,
+			y: -20,
+		});
 	}
 	
 	this.shuffleData = function() {
@@ -228,6 +439,8 @@ exports = Class(GC.Application, function () {
 	this.initGemInput = function (gem) {
 		var that = this;
 		gem.on("InputSelect", function () {
+			if (!that._isStartGame) return;
+			
 			if (that.lastSelectedGemView != gem){
 				if (that.lastSelectedGemView) {
 					that.lastSelectedGemView.stopShine();
@@ -237,6 +450,9 @@ exports = Class(GC.Application, function () {
 					
 					// Make sure they are neighbour
 					if (Math.abs(startIndex - destIndex) == 1 || Math.abs(startIndex - destIndex) == COLUMN) {
+						
+						that.hideAllSuggestion();
+						
 						// Check matched with last selected gem
 						
 						var startX = that.lastSelectedGemView.style.x;
@@ -259,6 +475,7 @@ exports = Class(GC.Application, function () {
 						}, 500).then(function () {
 							// Match
 							if (matched.length > 0) {
+								that._sfx.play("swap_ok");
 								
 								// swap data
 								var tmp = that._gemData[startIndex];
@@ -272,10 +489,15 @@ exports = Class(GC.Application, function () {
 								
 								that.handleMatched(matched);
 							} else {
+								that._sfx.play("swap_fail");
+						
 								animate(gem).now({
 									x: destX,
 									y: destY,
 								}, 500);
+								// Reset suggestion
+								that._isShowSuggestion = false;
+								that._suggestionEllapsedTime = 0;
 							}
 						});
 						
@@ -306,8 +528,36 @@ exports = Class(GC.Application, function () {
 		});	
 	}
 	
+	// When bomb drop
+	this.explode = function() {
+		var matched = [];
+		for (var i = 0; i < TOTAL_CELLS; i++) {
+			matched.push({x : parseInt(i % COLUMN), y: parseInt(i / COLUMN) });
+		}
+		this.handleMatched([matched]);
+	}
+	
 	this.handleMatched = function (matched) {
-		for	(var groupCounter = 0; groupCounter < matched.length; groupCounter++)  {
+		var that = this;
+		
+		this._fairy.play("blink", false);
+		this._fairy.once("complete", function () {
+			that._fairy.play("idle", true);
+		});
+		
+		for	(var groupCounter = 0; groupCounter < matched.length; groupCounter++) {
+			if (!this._isBombExplode) {
+				this._power += matched[groupCounter].length - 2;
+				if (this._power > MAX_POWER) {
+					this._power = MAX_POWER;
+				} 
+				this._powerMeter.updateOpts({
+					width: this._powerMeter.getImage().getSourceW() * this._power / MAX_POWER
+				});
+			}
+			
+			this._sfx.play("combo_sound" + (parseInt(groupCounter % 12) + 1));
+			
 			for	(var i = 0; i < matched[groupCounter].length; i++) {
 				// Destroy matched gems
 				this._gems[matched[groupCounter][i].y * COLUMN + matched[groupCounter][i].x].blast();
@@ -316,7 +566,11 @@ exports = Class(GC.Application, function () {
 			}
 		}
 		
-		var that = this;
+		if (this._power == MAX_POWER) {
+			this._power = 0;
+			this.fairyThrowBomb();
+		}
+		
 		animate(this.view)
 			.wait(500).then(function () {
 				that.handleDropDown();
@@ -326,6 +580,10 @@ exports = Class(GC.Application, function () {
 				var matchedAfterGenerate = that._swapLogic.findMatched();
 				if (matchedAfterGenerate.length > 0) {
 					that.handleMatched(matchedAfterGenerate);
+				} else {
+					// Reset suggestion
+					that._isShowSuggestion = false;
+					that._suggestionEllapsedTime = 0;
 				}
 			}); 
 	}
@@ -412,9 +670,19 @@ exports = Class(GC.Application, function () {
 		}
 	}
 
-	this.launchUI = function () {
-	};
+	this.hideAllSuggestion = function () {
+		for	(var i = 0; i < TOTAL_CELLS; i++) {
+			this._gems[i].stopShine();
+		}
+	}
 	
 	this.tick = function (dt) {
+		if (this._isStartGame) {
+			this._suggestionEllapsedTime += dt;
+			if (this._suggestionEllapsedTime >= SUGGESTION_TIME && !this._isShowSuggestion) {
+				this._isShowSuggestion = true;
+				this.suggest();
+			}
+		}
 	}
 });
