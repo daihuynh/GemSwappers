@@ -40,9 +40,11 @@ var TOTAL_CELLS = COLUMN * ROW;
 var START_X = 17;
 var START_Y = 313;
 var SPACING = 3;
-var ROUND_TIME = 10 * 1000;
+var ROUND_TIME = 3 * 60 * 1000; // 3 minutes
 var MAX_POWER = 30;
 var SUGGESTION_TIME = 3000; // seconds
+var ALLOW_MOVE = 30;
+var TARGET_SCORE = 2500;
 
 exports = Class(GC.Application, function () {
 
@@ -50,7 +52,17 @@ exports = Class(GC.Application, function () {
 	this._suggestionEllapsedTime = 0;
 	this._isShowSuggestion = false;
 	this._isBombExplode = false;
-
+	this._ellapsedTime = ROUND_TIME;
+	this._move = ALLOW_MOVE;
+	
+	this._gemData = new Array(16);
+	
+	this._swapLogic = new SwapLogic(this._gemData, ROW, COLUMN);
+					
+	this._idleTime = 0;
+					
+	this._gems = new Array(16);
+		
 	this._sound = new AudioManager({
 		path: "resources/sounds/music/",
 		files: {
@@ -61,7 +73,7 @@ exports = Class(GC.Application, function () {
 			}
 		}
 	});
-	this._sound.play("bg", {loop: true});
+	this._sound.playBackgroundMusic("bg", {loop: true});
 	
 	this._sfx = new AudioManager({
 		path: "resources/sounds/effect/",
@@ -90,14 +102,6 @@ exports = Class(GC.Application, function () {
 	this.initUI = function () {
 		this.view.style.scale = scale;
 		
-		this._gemData = new Array(16);
-		
-		this._swapLogic = new SwapLogic(this._gemData, ROW, COLUMN);
-						
-		this._idleTime = 0;
-						
-		this._gems = new Array(16);
-		
 		this.imgBgView = new ImageView({
 			superview: this.view,
 			width: boundsWidth,
@@ -114,13 +118,7 @@ exports = Class(GC.Application, function () {
 			image : "resources/images/bkgd_table_overlay.png"
 		});
 		
-		this.imgScoreBoard = SpriteInfo.getImageViewByName(this.imgBgOverlayView, "mainSpriteInfo", "header_score_small.png");
-		this.imgScoreBoard.updateOpts({
-			x: boundsWidth / 2 - this.imgScoreBoard.getImage().getSourceW() / 2,
-			y: boundsHeight - 160,
-		});
-		
-		//this.initScoreView();
+		this.initScoreView();
 		
 		this.initButtons();
 		
@@ -138,9 +136,12 @@ exports = Class(GC.Application, function () {
 		
 		this.sync_gems();
 		
-		
 		this.initCountDown();
 		
+		this.startGame();
+	};
+	
+	this.startGame = function() {
 		var that = this;
 		this._sfx.play("count");
 		setTimeout(function() {
@@ -151,31 +152,56 @@ exports = Class(GC.Application, function () {
 		}, 2000);
 		setTimeout(function() {
 			that._sfx.play("go");
+			that._timerAnimateImage.play(false);
 		}, 3000);
-	};
+	}
+	
+	this.stopGame = function() {
+		this._isStartGame = false;
+		if (this._score < TARGET_SCORE) {
+			new TextView({
+				superview : this.imgBgOverlayView,
+				layout: "box",
+				x : 0,
+				y : 0,
+				text: "LOSE",
+				color : "red",
+				shadowColor: "#999999"
+			});
+		} else {
+			new TextView({
+				superview : this.imgBgOverlayView,
+				layout: "box",
+				x : 0,
+				y : 0,
+				text: "WIN",
+				color : "red",
+				shadowColor: "#999999"
+			});
+		}
+	}
+	
 	
 	this.initScoreView = function() {
-		this.scoreView = new ScoreView({
-			superview: this.view,
-			x: 20,
-			y: 70,
-			width: 70,
-			height: 35,
-			blockEvents: true,
-			characterData: {
-				"0": { "image": "resources/images/numbers/score_0.png"},
-				"1": { "image": "resources/images/numbers/score_1.png"},
-				"2": { "image": "resources/images/numbers/score_2.png"},
-				"3": { "image": "resources/images/numbers/score_3.png"},
-				"4": { "image": "resources/images/numbers/score_4.png"},
-				"5": { "image": "resources/images/numbers/score_5.png"},
-				"6": { "image": "resources/images/numbers/score_6.png"},
-				"7": { "image": "resources/images/numbers/score_7.png"},
-				"8": { "image": "resources/images/numbers/score_8.png"},
-				"8": { "image": "resources/images/numbers/score_9.png"},
-				"9": { "image": "resources/images/numbers/score_comma.png"}
-			},
-			text: "123123"
+		var scoreBoard = SpriteInfo.getImageViewByName(this.imgBgOverlayView, "mainSpriteInfo", "header_score_small.png");
+		scoreBoard.updateOpts({
+			x: boundsWidth / 2 - scoreBoard.getImage().getSourceW() / 2,
+			y: boundsHeight - 160,
+		});
+		
+		this._score = 0;
+		this._txtScore = new TextView({
+			superview: scoreBoard,
+			x: 0,
+			y: 0,
+			width: scoreBoard.getImage().getSourceW() - 20,
+			size: 60,
+			horizontalAlign: "right",
+			fontWeight : "bold",
+			layout: "box",
+			text: "0",
+			color: "white",
+			shadowColor: "#999999"
 		});
 	}
 	
@@ -333,18 +359,23 @@ exports = Class(GC.Application, function () {
 		});
 		this._coinAnim.play(true);
 		
-		this._moveImageView = SpriteInfo.getImageViewByName(this.imgBgOverlayView, "mainSpriteInfo", "move_icon.png");
-		this._moveImageView.updateOpts({
-			x: 220,
-			y: boundsHeight - 65
+		this._imgDone = SpriteInfo.getImageViewByName(this._coinAnim, "mainSpriteInfo", "check_icon.png");
+		this._imgDone.hide();
+		
+		new TextView({
+			superview : this._coinAnim,
+			x: 60,
+			fontWeight: "bold",
+			layout: "box",
+			text: (TARGET_SCORE + "").replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,"),
+			color: "white",
+			shadowColor: "#999999"
 		});
-		
-		
 		
 		this._timerAnimateImage = new AnimateImage({
 			superview : this.imgBgOverlayView,
-			x: 400,
-			y: boundsHeight - 70,
+			x: 220,
+			y: boundsHeight - 67,
 			isResetSize : true,
 			fps : (1000 / ROUND_TIME) * 14,
 			images:  [
@@ -365,8 +396,36 @@ exports = Class(GC.Application, function () {
 					]
 		});
 		
+		this._txtTime = new TextView({
+			superview : this._timerAnimateImage,
+			x: 60,
+			fontWeight: "bold",
+			layout: "box",
+			text: "03:00",
+			color: "white",
+			shadowColor: "#999999"
+		});
+		
 		this._timerAnimateImage.on("complete", function() {
 			console.log("Timeout dude!");
+		});
+		
+		
+		
+		this._moveImageView = SpriteInfo.getImageViewByName(this.imgBgOverlayView, "mainSpriteInfo", "move_icon.png");
+		this._moveImageView.updateOpts({
+			x: 360,
+			y: boundsHeight - 65
+		});
+		
+		this._txtMove = new TextView({
+			superview : this._moveImageView,
+			x: 60,
+			fontWeight: "bold",
+			layout: "box",
+			text: "30",
+			color: "blue",
+			shadowColor: "#999999"
 		});
 	}
 	
@@ -407,6 +466,15 @@ exports = Class(GC.Application, function () {
 			x: 20,
 			y: -20,
 		});
+		
+		new TextView({
+			superview: frame,
+			x: 30,
+			y: 0,
+			layout: "box",
+			text: "x3",
+			color: "white"
+		});
 	}
 	
 	this.shuffleData = function() {
@@ -440,6 +508,7 @@ exports = Class(GC.Application, function () {
 		var that = this;
 		gem.on("InputSelect", function () {
 			if (!that._isStartGame) return;
+			if (that._move == 0) return;
 			
 			if (that.lastSelectedGemView != gem){
 				if (that.lastSelectedGemView) {
@@ -450,6 +519,8 @@ exports = Class(GC.Application, function () {
 					
 					// Make sure they are neighbour
 					if (Math.abs(startIndex - destIndex) == 1 || Math.abs(startIndex - destIndex) == COLUMN) {
+						that._move--;
+						that._txtMove.setText(that._move);
 						
 						that.hideAllSuggestion();
 						
@@ -537,6 +608,7 @@ exports = Class(GC.Application, function () {
 		this.handleMatched([matched]);
 	}
 	
+	this._matchedCombo = 0;
 	this.handleMatched = function (matched) {
 		var that = this;
 		
@@ -550,13 +622,17 @@ exports = Class(GC.Application, function () {
 				this._power += matched[groupCounter].length - 2;
 				if (this._power > MAX_POWER) {
 					this._power = MAX_POWER;
-				} 
+				}
+				
+				this._score += parseInt(matched[groupCounter].length * 10);
+				this._txtScore.setText((this._score + "").replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1,"));
+				
 				this._powerMeter.updateOpts({
 					width: this._powerMeter.getImage().getSourceW() * this._power / MAX_POWER
 				});
 			}
 			
-			this._sfx.play("combo_sound" + (parseInt(groupCounter % 12) + 1));
+			this._sfx.play("combo_sound" + (parseInt(that._matchedCombo++ % 12) + 1));
 			
 			for	(var i = 0; i < matched[groupCounter].length; i++) {
 				// Destroy matched gems
@@ -564,11 +640,6 @@ exports = Class(GC.Application, function () {
 				// Even clear data
 				this._gemData[matched[groupCounter][i].y * COLUMN + matched[groupCounter][i].x] = -1;
 			}
-		}
-		
-		if (this._power == MAX_POWER) {
-			this._power = 0;
-			this.fairyThrowBomb();
 		}
 		
 		animate(this.view)
@@ -584,6 +655,17 @@ exports = Class(GC.Application, function () {
 					// Reset suggestion
 					that._isShowSuggestion = false;
 					that._suggestionEllapsedTime = 0;
+					
+					that._matchedCombo = 0;
+		
+					if (that._power == MAX_POWER) {
+						that._power = 0;
+						that.fairyThrowBomb();
+					} else {
+						if (that._move == 0) {
+							that.stopGame();
+						}
+					}
 				}
 			}); 
 	}
@@ -683,6 +765,17 @@ exports = Class(GC.Application, function () {
 				this._isShowSuggestion = true;
 				this.suggest();
 			}
+			
+			this._ellapsedTime -= dt;
+			if (this._ellapsedTime <= 0) {
+				this._ellapsedTime = 0;
+				this.stopGame();
+			}
+			
+			var minute = parseInt(this._ellapsedTime / 60000);
+			var seconds = parseInt(this._ellapsedTime / 1000) % 60;
+			
+			this._txtTime.setText(("0" + minute).slice(-2) + ":" + ("0" + seconds).slice(-2));
 		}
 	}
 });
