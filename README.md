@@ -19,6 +19,14 @@
    Start game
    > devkit serve
    
+## How to play
+  * Your objective is getting 2,500 score within 3 minutes, limited with 30 moves.
+  * Click on any gem then the neighbour gem for swapping.
+  * Game will show suggestion after you idle in 3 seconds.
+  * Every gem you earn will increase the Mermaid's power.
+  * When mermaid is full power, she will drop a bomb to destroy all gems.
+  * You can restart the game.
+   
 ## About project
 ### Challenges
 1. **Sprite Animation**:
@@ -33,4 +41,28 @@
 
 3. **Asset security**:
   * None topics in document metion about how to security asset. Why am i serious about it? I don't want to see my game's assets in other games of others guy out there (if will submit to production). Luckily, **TexturePacker** has an security option for Texture atlas file but testing times does not allow me for using this option.
+
+4. **Layout design**:
+  * Layouting by code is not a fancy thing when making a game. I have to code and refresh everytime to check and it took really much times for this. Some HTML5 game frameworks already had their own Layout Design tool, developers just need to focus on logic.
+  
+### Feature improvement
+  * I will design an level editor for designer to make this game more fun, interesting.
+  * Add feature: color bomb, thunder gem, explosion gem and more...
+  * Social plugin: share achievements with friends, request help, chat in game
+  
+  
+## About mobile game development
+ * Mobile games nowaday is a trend, everyone loves playing game on mobile then desktop. The most successful mobile game are social/casual games, people likes quick play, much fun and sharable. That's why many modern game engines have more features, tools for mobile game developing. It allows fasting coding for developers, easy to make protoype, modify, tool for designer and the most important thing is connecting every people in whole team. I means: the artist can draw, layouting scene inside project without waitting for developers coding, developer can quickly implement protoype logic, make level editor for designer, designer can choose song, sound effects, logic.
+ * HTML5 has it owned advantage:
+      - Cross-platform.
+      - No need to install on device ( if using web browser to play)
+      - Web developers no need to learn new language
+      - Websocket for online games.
+   
+ * But has disadvantage too:
+      - Not really good performance for a heavy using GPU games.
+      - Interrect with native via WebView (that's mean have to make a wrapper native app).
+      - Hard to implement OOP.
+ 
+ * These disadvantages are now solved in some HTML5 game engines. For example: cocos2d-js has it owned binding to C++ that makes performance is good.
 
