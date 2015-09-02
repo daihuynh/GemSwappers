@@ -206,17 +206,36 @@ exports = Class(GC.Application, function () {
 	}
 	
 	this.initButtons = function() {
-		this.btnPause = new ButtonView({
-			superview: this.imgBgView,
-			x: 1,
-			y: 1,
+		this._btnPause = new ButtonView({
+			superview: this.imgBgOverlayView,
+			x: boundsWidth - 85,
+			y: 10,
+			width : 75,
+			height: 75,
 			images: {
-				up: "resources/images/button_pause.png",
-				down: "resources/images/button_pause_pressed.png"
+				up: SpriteInfo.findImageByName("mainSpriteInfo", "button_pause.png"),
+				down: SpriteInfo.findImageByName("mainSpriteInfo", "button_pause_pressed.png")
 			},
 			on: {
 				up: function() {
-					
+					location.reload();
+				}
+			}
+		});
+		
+		this._btnRefresh = new ButtonView({
+			superview: this.imgBgOverlayView,
+			x: boundsWidth - 85,
+			y: 85,
+			width : 75,
+			height: 75,
+			images: {
+				up: SpriteInfo.findImageByName("mainSpriteInfo", "button_replay.png"),
+				down: SpriteInfo.findImageByName("mainSpriteInfo", "button_replay_pressed.png")
+			},
+			on: {
+				up: function() {
+					location.reload();
 				}
 			}
 		});
